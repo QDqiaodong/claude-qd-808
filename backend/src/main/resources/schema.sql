@@ -3,6 +3,8 @@
 SET NAMES utf8mb4;
 
 -- ========================= 建表 =========================
+DROP TABLE IF EXISTS qc_recheck_item;
+DROP TABLE IF EXISTS qc_recheck;
 DROP TABLE IF EXISTS qc_item;
 DROP TABLE IF EXISTS qc_sample;
 DROP TABLE IF EXISTS pellet;
@@ -72,7 +74,7 @@ CREATE TABLE batch (
     planned_tons DECIMAL(10,2) NULL COMMENT '计划产量吨',
     actual_tons  DECIMAL(10,2) NULL COMMENT '实际产量吨',
     produce_date DATE          NULL COMMENT '生产日期',
-    status       VARCHAR(16)   NULL COMMENT 'PLANNED/FEEDING/PELLETING/QC/DONE',
+    status       VARCHAR(16)   NULL COMMENT 'PLANNED/FEEDING/PELLETING/QC/RECHECK/DONE',
     operator_name VARCHAR(32)  NULL COMMENT '班组',
     remark       VARCHAR(255)  NULL,
     PRIMARY KEY (id),
@@ -152,6 +154,47 @@ CREATE TABLE qc_item (
     KEY idx_qc_item_sample (sample_id),
     CONSTRAINT fk_qc_item_sample FOREIGN KEY (sample_id) REFERENCES qc_sample (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='质检检验项';
+
+-- 退货复检单：仅初检结论为 REJECT 的批次可发起；一批次同一时刻只允许一张进行中（active_flag=1 唯一）
+CREATE TABLE qc_recheck (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    recheck_no        VARCHAR(32)  NOT NULL COMMENT '复检单号',
+    sample_id         BIGINT       NOT NULL COMMENT '初检抽样单（原记录只读）',
+    batch_id          BIGINT       NOT NULL COMMENT '退货批次',
+    initiator         VARCHAR(32)  NOT NULL COMMENT '发起人',
+    reason            VARCHAR(255) NOT NULL COMMENT '复检原因',
+    status            VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING 待复核/MEASURING 复检中/DONE 已完成',
+    active_flag       TINYINT      NULL DEFAULT 1 COMMENT '进行中=1，完成=NULL（配合唯一索引收口）',
+    reviewer          VARCHAR(32)  NULL COMMENT '复核员（必须不同于初检判定人）',
+    final_conclusion  VARCHAR(16)  NULL COMMENT '最终结论 RELEASE/DOWNGRADE/REJECT',
+    final_disposition VARCHAR(64)  NULL COMMENT '最终去向',
+    reviewed_at       DATETIME     NULL COMMENT '复核提交时间',
+    created_at        DATETIME     NULL COMMENT '发起时间',
+    remark            VARCHAR(255) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_recheck_no (recheck_no),
+    UNIQUE KEY uk_recheck_active (batch_id, active_flag),
+    KEY idx_recheck_sample (sample_id),
+    CONSTRAINT fk_recheck_sample FOREIGN KEY (sample_id) REFERENCES qc_sample (id),
+    CONSTRAINT fk_recheck_batch FOREIGN KEY (batch_id) REFERENCES batch (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='退货复检单';
+
+-- 复检检验项：复核员录入的新检验值，初检 qc_item 永不改写
+CREATE TABLE qc_recheck_item (
+    id             BIGINT        NOT NULL AUTO_INCREMENT,
+    recheck_id     BIGINT        NOT NULL COMMENT '所属复检单',
+    item_code      VARCHAR(32)   NULL COMMENT 'MOISTURE/PROTEIN/MYCOTOXIN/ASH',
+    item_name      VARCHAR(32)   NULL COMMENT '检验项名称',
+    check_order    INT           NULL COMMENT '检验次序',
+    unit           VARCHAR(16)   NULL COMMENT '单位',
+    measured_value DECIMAL(10,3) NULL COMMENT '复检实测值',
+    std_lower      DECIMAL(10,3) NULL COMMENT '标准下限（快照自初检）',
+    std_upper      DECIMAL(10,3) NULL COMMENT '标准上限（快照自初检）',
+    qualified      TINYINT(1)    NULL DEFAULT 1 COMMENT '是否合格',
+    PRIMARY KEY (id),
+    KEY idx_recheck_item (recheck_id),
+    CONSTRAINT fk_recheck_item FOREIGN KEY (recheck_id) REFERENCES qc_recheck (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='复检检验项';
 
 -- ========================= 种子数据 =========================
 

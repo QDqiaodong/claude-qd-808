@@ -707,6 +707,75 @@ h1, h2, h3, h4 {
 .chip-run { background: #e3f2fd; color: #1565c0; }
 .chip-gray { background: #eceff1; color: #607d8b; }
 
+/* ============ 退货复检闭环 ============ */
+.recheck-area {
+  margin-top: 12px;
+  border-top: 1px dashed var(--fm-line);
+  padding-top: 12px;
+}
+
+.recheck-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.recheck-panel {
+  border: 1px solid var(--fm-line);
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 10px 12px;
+}
+
+.recheck-panel.recheck-done {
+  background: #fff;
+}
+
+.recheck-final {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 复检结论小印章（复用主印章配色） */
+.stamp.stamp-mini {
+  width: 76px;
+  height: 76px;
+  border-width: 3px;
+  flex: none;
+}
+
+.stamp.stamp-mini .stamp-title {
+  font-size: 16px;
+}
+
+.stamp.stamp-mini .stamp-sub {
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.stamp.stamp-mini .stamp-date {
+  font-size: 8px;
+  margin-top: 2px;
+}
+
+.recheck-rule {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--fm-primary-soft);
+  color: var(--fm-primary-dark);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.bad-text {
+  color: #c62828;
+  font-weight: 700;
+}
+
 .mill-foot {
   margin: 28px 32px 0;
   text-align: center;

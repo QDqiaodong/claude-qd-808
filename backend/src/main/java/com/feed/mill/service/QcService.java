@@ -3,6 +3,7 @@ package com.feed.mill.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,9 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.feed.mill.common.BizException;
 import com.feed.mill.domain.QcItem;
+import com.feed.mill.domain.QcRecheck;
 import com.feed.mill.domain.QcSample;
 import com.feed.mill.dto.QcFailDistVO;
 import com.feed.mill.dto.QcJudgeCommand;
+import com.feed.mill.repository.QcRecheckRepository;
 import com.feed.mill.repository.QcSampleRepository;
 
 /**
@@ -32,9 +35,11 @@ public class QcService {
             "REJECT", "回机处理");
 
     private final QcSampleRepository qcSampleRepository;
+    private final QcRecheckRepository qcRecheckRepository;
 
-    public QcService(QcSampleRepository qcSampleRepository) {
+    public QcService(QcSampleRepository qcSampleRepository, QcRecheckRepository qcRecheckRepository) {
         this.qcSampleRepository = qcSampleRepository;
+        this.qcRecheckRepository = qcRecheckRepository;
     }
 
     @Transactional(readOnly = true)
@@ -117,12 +122,23 @@ public class QcService {
         return result;
     }
 
-    /** 结论分布：合格/降级/退货 各多少批 */
+    /**
+     * 结论分布：合格/降级/退货 各多少批。
+     * 口径与复检闭环一致：已完成复检的批次按复检最终结论计（放行=合格），
+     * 初检原始记录不改写，统计时叠加生效。
+     */
     @Transactional(readOnly = true)
     public Map<String, Long> conclusionStats() {
+        Map<Long, String> recheckFinal = new HashMap<>();
+        for (QcRecheck r : qcRecheckRepository.findByStatusOrderById("DONE")) {
+            recheckFinal.put(r.getSample().getId(), RecheckService.statsConclusion(r.getFinalConclusion()));
+        }
         Map<String, Long> stats = new java.util.LinkedHashMap<>();
-        for (Object[] row : qcSampleRepository.conclusionDistribution()) {
-            stats.put((String) row[0], toLong(row[1]));
+        for (QcSample s : qcSampleRepository.findAll()) {
+            String conclusion = recheckFinal.getOrDefault(s.getId(), s.getConclusion());
+            if (conclusion != null) {
+                stats.merge(conclusion, 1L, Long::sum);
+            }
         }
         return stats;
     }

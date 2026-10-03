@@ -120,7 +120,7 @@ const estDeviation = computed(() => {
 })
 
 function statusName (s) {
-  return { PLANNED: '待排产', FEEDING: '投料中', PELLETING: '制粒中', QC: '质检中', DONE: '已完成' }[s] || s
+  return { PLANNED: '待排产', FEEDING: '投料中', PELLETING: '制粒中', QC: '质检中', RECHECK: '复检中', DONE: '已完成' }[s] || s
 }
 function feedStatusName (item) {
   if (counting.value[item.feedSeq]) return '称量中'

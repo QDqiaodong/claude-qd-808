@@ -45,6 +45,12 @@
 3. 投料必须按投料口顺序；实际称重与计划量偏差超过 ±2% 拦截并记为异常。
 4. 环模累计产量 + 本批产量超过寿命上限不允许继续制粒（记录 BLOCKED）。
 5. 霉菌毒素超标必须判退货，不允许人工改判合格；其它项超标不允许判合格。
+6. 退货复检闭环：仅初检结论为退货的批次可发起复检（留发起人/原因/待复核状态）；
+   复核员必须不同于初检判定人；复检值写入 qc_recheck_item，初检 qc_sample/qc_item 永不改写；
+   霉菌毒素仍超标必须继续退货，全部项目恢复标准范围才允许放行，中间情形判降级并给明确去向；
+   一批次同一时刻只有一张进行中复检单（uk_recheck_active 唯一索引），
+   最终结论用条件更新原子收口，并发/重复提交只有第一个生效，后到请求看到已完成结果不能覆盖；
+   结论生效后批次状态、质检卡片、概览合格率口径一致回写（放行=合格）。
 
 ## 接口
 
@@ -66,6 +72,10 @@ POST /api/pellets/batch/{id}/adjust 工艺参数调整 + 推荐寿命消耗
 POST /api/pellets/batch/{id}/produce 制粒产出（超寿命拦截）
 GET  /api/qc/samples                抽样批次（@SortNatural 有序检验项）
 POST /api/qc/samples/{id}/judge     质检判定
+GET  /api/qc/rechecks               复检单列表（含复检检验值）
+POST /api/qc/samples/{id}/rechecks  发起退货复检（仅初检退货批次）
+POST /api/qc/rechecks/{id}/measure  复核员录入复检检验值
+POST /api/qc/rechecks/{id}/conclude 提交复检最终结论（原子收口）
 GET  /api/qc/stats/fail-distribution 不合格项分布
 GET  /api/stats/dashboard           工段概览
 ```

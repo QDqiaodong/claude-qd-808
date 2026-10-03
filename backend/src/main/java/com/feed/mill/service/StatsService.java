@@ -95,7 +95,7 @@ public class StatsService {
                 : BigDecimal.valueOf(pass).multiply(BigDecimal.valueOf(100))
                         .divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP));
 
-        vo.setRunningCount(batchRepository.countByStatusIn(List.of("FEEDING", "PELLETING", "QC")));
+        vo.setRunningCount(batchRepository.countByStatusIn(List.of("FEEDING", "PELLETING", "QC", "RECHECK")));
         vo.setLowStockCount((long) materialRepository.findLowStock().size());
 
         int from = Math.max(0, daily.size() - TREND_DAYS);

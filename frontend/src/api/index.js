@@ -52,5 +52,11 @@ export const fetchQcSamples = () => http.get('/qc/samples')
 export const judgeSample = (id, payload) => http.post(`/qc/samples/${id}/judge`, payload)
 export const fetchFailDistribution = () => http.get('/qc/stats/fail-distribution')
 
+/** 退货复检闭环 */
+export const fetchRechecks = () => http.get('/qc/rechecks')
+export const createRecheck = (sampleId, payload) => http.post(`/qc/samples/${sampleId}/rechecks`, payload)
+export const measureRecheck = (id, payload) => http.post(`/qc/rechecks/${id}/measure`, payload)
+export const concludeRecheck = (id, payload) => http.post(`/qc/rechecks/${id}/conclude`, payload)
+
 /** 概览 */
 export const fetchDashboard = () => http.get('/stats/dashboard')

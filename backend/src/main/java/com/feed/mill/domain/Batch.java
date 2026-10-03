@@ -53,7 +53,7 @@ public class Batch {
     @Column(name = "produce_date")
     private LocalDate produceDate;
 
-    /** 状态 PLANNED/FEEDING/PELLETING/QC/DONE */
+    /** 状态 PLANNED/FEEDING/PELLETING/QC/RECHECK/DONE */
     @Column(name = "status", length = 16)
     private String status;
 
