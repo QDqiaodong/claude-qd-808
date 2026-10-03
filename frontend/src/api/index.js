@@ -52,5 +52,11 @@ export const fetchQcSamples = () => http.get('/qc/samples')
 export const judgeSample = (id, payload) => http.post(`/qc/samples/${id}/judge`, payload)
 export const fetchFailDistribution = () => http.get('/qc/stats/fail-distribution')
 
+/** 退货批次复检 */
+export const fetchRechecks = () => http.get('/qc/rechecks')
+export const fetchRechecksByBatch = (batchId) => http.get(`/qc/rechecks/batch/${batchId}`)
+export const createRecheck = (payload) => http.post('/qc/rechecks', payload)
+export const reviewRecheck = (id, payload) => http.post(`/qc/rechecks/${id}/review`, payload)
+
 /** 概览 */
 export const fetchDashboard = () => http.get('/stats/dashboard')

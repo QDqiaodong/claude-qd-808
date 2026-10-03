@@ -3,6 +3,8 @@ package com.feed.mill.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.feed.mill.common.BizException;
 import com.feed.mill.domain.QcItem;
+import com.feed.mill.domain.QcRecheck;
 import com.feed.mill.domain.QcSample;
 import com.feed.mill.dto.QcFailDistVO;
 import com.feed.mill.dto.QcJudgeCommand;
+import com.feed.mill.repository.QcRecheckRepository;
 import com.feed.mill.repository.QcSampleRepository;
 
 /**
@@ -32,9 +36,11 @@ public class QcService {
             "REJECT", "回机处理");
 
     private final QcSampleRepository qcSampleRepository;
+    private final QcRecheckRepository qcRecheckRepository;
 
-    public QcService(QcSampleRepository qcSampleRepository) {
+    public QcService(QcSampleRepository qcSampleRepository, QcRecheckRepository qcRecheckRepository) {
         this.qcSampleRepository = qcSampleRepository;
+        this.qcRecheckRepository = qcRecheckRepository;
     }
 
     @Transactional(readOnly = true)
@@ -117,12 +123,25 @@ public class QcService {
         return result;
     }
 
-    /** 结论分布：合格/降级/退货 各多少批 */
+    /**
+     * 结论分布：按每批最终有效结论统计 —— 复检已收口的退货批次以复检结论为准
+     * （放行 RELEASE 计入合格 PASS），未发起或未收口的批次仍按初检原口径。
+     * 初检记录本身不改写，口径通过复检单叠加得到，批次状态 / 质检卡片 / 概览三者一致。
+     */
     @Transactional(readOnly = true)
     public Map<String, Long> conclusionStats() {
-        Map<String, Long> stats = new java.util.LinkedHashMap<>();
-        for (Object[] row : qcSampleRepository.conclusionDistribution()) {
-            stats.put((String) row[0], toLong(row[1]));
+        Map<Long, String> finalByBatch = new HashMap<>();
+        for (QcRecheck recheck : qcRecheckRepository.findByStatusOrderByIdDesc(QcRecheckService.STATUS_DONE)) {
+            String conclusion = QcRecheckService.RELEASE.equals(recheck.getConclusion())
+                    ? "PASS" : recheck.getConclusion();
+            finalByBatch.putIfAbsent(recheck.getBatch().getId(), conclusion);
+        }
+        Map<String, Long> stats = new LinkedHashMap<>();
+        for (QcSample sample : qcSampleRepository.findAll()) {
+            String effective = finalByBatch.getOrDefault(sample.getBatch().getId(), sample.getConclusion());
+            if (effective != null) {
+                stats.merge(effective, 1L, Long::sum);
+            }
         }
         return stats;
     }

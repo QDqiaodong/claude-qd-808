@@ -693,6 +693,37 @@ h1, h2, h3, h4 {
   margin-top: 6px;
 }
 
+/* ============ 退货批次复检 ============ */
+.recheck-area {
+  margin-top: 12px;
+  border-top: 1px dashed var(--fm-line);
+  padding-top: 10px;
+}
+
+.recheck-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.recheck-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.recheck-body .el-table {
+  align-self: stretch;
+}
+
+.bad-text {
+  color: #c62828;
+  font-weight: 700;
+}
+
 .tag-chip {
   display: inline-block;
   padding: 1px 8px;

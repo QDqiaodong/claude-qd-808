@@ -3,6 +3,8 @@
 SET NAMES utf8mb4;
 
 -- ========================= 建表 =========================
+DROP TABLE IF EXISTS qc_recheck_item;
+DROP TABLE IF EXISTS qc_recheck;
 DROP TABLE IF EXISTS qc_item;
 DROP TABLE IF EXISTS qc_sample;
 DROP TABLE IF EXISTS pellet;
@@ -152,6 +154,49 @@ CREATE TABLE qc_item (
     KEY idx_qc_item_sample (sample_id),
     CONSTRAINT fk_qc_item_sample FOREIGN KEY (sample_id) REFERENCES qc_sample (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='质检检验项';
+
+-- 退货批次复检单（初检记录永不改写，复检全程落新表）
+-- active_key 生成列：仅 PENDING（进行中）时取 batch_id，配合唯一索引保证
+-- 同一批次同一时刻只有一张进行中的复检单，并发发起由数据库兜底拦截。
+CREATE TABLE qc_recheck (
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    recheck_no   VARCHAR(40)  NOT NULL COMMENT '复检单号',
+    batch_id     BIGINT       NOT NULL COMMENT '复检批次',
+    sample_id    BIGINT       NOT NULL COMMENT '初检抽样单（快照引用，原记录不改写）',
+    initiator    VARCHAR(32)  NOT NULL COMMENT '发起人',
+    reason       VARCHAR(255) NOT NULL COMMENT '发起原因',
+    status       VARCHAR(16)  NOT NULL COMMENT 'PENDING 待复核 / DONE 已收口',
+    reviewer     VARCHAR(32)  NULL COMMENT '复核员（须不同于初检判定人）',
+    conclusion   VARCHAR(16)  NULL COMMENT 'RELEASE 放行 / DOWNGRADE 降级 / REJECT 继续退货',
+    disposition  VARCHAR(64)  NULL COMMENT '最终去向',
+    remark       VARCHAR(255) NULL,
+    created_at   DATETIME     NULL COMMENT '发起时间',
+    reviewed_at  DATETIME     NULL COMMENT '复核收口时间',
+    active_key   BIGINT GENERATED ALWAYS AS (IF(status = 'PENDING', batch_id, NULL)) STORED COMMENT '进行中复检单收口键',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_recheck_no (recheck_no),
+    UNIQUE KEY uk_recheck_active (active_key),
+    KEY idx_recheck_batch (batch_id),
+    CONSTRAINT fk_recheck_batch FOREIGN KEY (batch_id) REFERENCES batch (id),
+    CONSTRAINT fk_recheck_sample FOREIGN KEY (sample_id) REFERENCES qc_sample (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='退货批次复检单';
+
+-- 复检检验项：复核员录入的新测定值，标准区间快照自初检，原始检验结果不改写
+CREATE TABLE qc_recheck_item (
+    id             BIGINT        NOT NULL AUTO_INCREMENT,
+    recheck_id     BIGINT        NOT NULL COMMENT '所属复检单',
+    item_code      VARCHAR(32)   NULL COMMENT 'MOISTURE/PROTEIN/MYCOTOXIN/ASH',
+    item_name      VARCHAR(32)   NULL COMMENT '检验项名称',
+    check_order    INT           NULL COMMENT '检验次序',
+    unit           VARCHAR(16)   NULL COMMENT '单位',
+    measured_value DECIMAL(10,3) NULL COMMENT '复检测定值',
+    std_lower      DECIMAL(10,3) NULL COMMENT '标准下限（快照自初检）',
+    std_upper      DECIMAL(10,3) NULL COMMENT '标准上限（快照自初检）',
+    qualified      TINYINT(1)    NULL DEFAULT 1 COMMENT '是否合格',
+    PRIMARY KEY (id),
+    KEY idx_recheck_item_recheck (recheck_id),
+    CONSTRAINT fk_recheck_item_recheck FOREIGN KEY (recheck_id) REFERENCES qc_recheck (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='复检检验项';
 
 -- ========================= 种子数据 =========================
 
